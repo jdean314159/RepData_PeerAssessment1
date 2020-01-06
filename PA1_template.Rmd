@@ -1,25 +1,160 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "Reproducible Research Project"
+author: "Jeff Dean"
+date: "12/26/2019"
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+par(mar=c(6,6,6,2))
+```
 
-## Loading and preprocessing the data
+## Project 1 - Goals
+
+This is an R Markdown document containing the code and documentation required for evaluating activity monitoring data.  The dataset contains data reflecting the number of steps taken during five minute intervals, plus the data and interval the data was collected. 
+
+With this data, we are required to generate an R Markdown document containing the following:  
+1. Code for reading in the dataset and/or processing the data  
+2. Histogram of the total number of steps taken each day  
+3. Mean and median number of steps taken each day  
+4. Time series plot of the average number of steps taken  
+5. The 5-minute interval that, on average, contains the maximum number of steps  
+6. Code to describe and show a strategy for imputing missing data  
+7. Histogram of the total number of steps taken each day after missing values are imputed  
+8. Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends  
+9. All of the R code needed to reproduce the results (numbers, plots, etc.) in the report  
+
+```{r libraries, message=FALSE, echo=TRUE}
+library(UsingR)
+library(lubridate)
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(mlr)
+#install.packages("BBmisc")
+library(BBmisc)
+#install.packages("mice")
+library(mice)
+library(gridExtra)
+library(caTools)
+library(httpuv)
+```
+
+### Reading in the data set
+```{r data_read, echo=TRUE}
+# data_loc <- "C:/Users/jsdean/Documents/Reproducible_research/activity.csv"
+ data_loc <- "/home/jsdean/Documents/R/Reproducible_research/activity.csv"
+data <- read.csv(data_loc)                       # Read in the data
+data$date <- as.Date(as.character(data$date))    # Set date type
+```
+  
+### Generate histogram of the total number of steps taken each day
+```{r histogram, echo=TRUE}
+grouped <- group_by(data, date)                  # group rows by date
+group_sums <- summarize(grouped, 
+               tot_steps=sum(steps, na.rm=TRUE)) # Determine total steps per day
+steps <- group_sums$tot_steps                    # short name for total steps
+len <- length(unique(steps))                     # get number of step values     
+hist(steps, breaks = len, main = "Steps per Day", 
+     xlab = "Total Steps")                       # Create histogram of step values
+```
+
+### Show mean and median number of steps taken each day
+```{r mean_medium, echo=TRUE}
+Mean   <- format(mean(steps, na.rm=TRUE), nsmall=2)
+Median <- format(median(steps, na.rm=TRUE), nsmall=2)
+```
+#### The mean number of steps per day is `r Mean`, and the median is `r Median`.
+
+###  Time series plot of the average number of steps taken 
+```{r stats, echo=TRUE}
+data$interval <- as.factor(data$interval)
+grouped <- group_by(data, interval)
+stats <- summarize(grouped, ave_steps=mean(steps, na.rm=TRUE))
+ggplot(stats, aes(x=1:length(stats$ave_steps), y=ave_steps)) + geom_line() + 
+  ggtitle("Average Steps Per Interval") + xlab("Interval")  + ylab("Average Steps")
+```
+    
+
+### Show the 5-minute interval that, on average, contains the maximum number of steps 
+
+```{r Max_interval, echo=TRUE}
+data$interval <- as.factor(data$interval)
+grouped <- group_by(data, interval)
+t_means <- summarise(grouped, ave = mean(steps, na.rm=TRUE))
+Max <- data[which.max(t_means$ave),]
+interval <- as.character(Max$interval)
+interval <- paste(substring(interval,1,1),":", substring(interval,2,3), sep="")
+
+```
+
+#### The five minute interval that contained the maximum number of steps was at `r interval`.
+
+### Code to describe and show a strategy for imputing missing data 
+```{r impute_data, echo=TRUE}
+# extract two character strings from character vector
+splt <- function(vec, start) {
+    tmp <- sapply(t, function(i) substr(i,start,start+1))
+    tmp <- as.integer(tmp)
+    tmp
+}
+
+# scale (mean = 0, sd = 1) specified columns in table
+scale_nums <- function(df, cols=c("hr", "mn", "yday")) {
+  for(col in cols) {
+    df[,col] <- as.numeric(scale(df[,col]))
+  }
+  df
+}
+
+data <- read.csv(data_loc)                     # Read in original data
+data$yday <- as.POSIXlt(data$date)$yday        # extract day of year (1:365) value
+
+t <- str_pad(as.character(data$interval), 
+             4, pad="0")                       # extract hour and minute
+data$hr <- splt(t,1)                           # values from interval
+data$mn <- splt(t,3)
+
+data2 <- data[c("steps", "hr", "mn", "yday")]  # select steps, hour, minute & year-day
+data2 <- scale_nums(data2, cols=c("hr", "mn", "yday")) # Normalize columns
+
+tempData <- mice(data=data2, m=5, 
+                 meth='pmm',seed=500)          # Impute missing values
+data3 <- complete(tempData,1)                  # get data with imputed values   
+data4 <- data[, c("steps", "date", "interval")]# get original data columns
+data4$steps <- data3$steps                     # Insert imputed values into data   
+```
+The data is re-read to include missing step values.  The date values are converted to integers representing the day of the year (yday), and the converted dates and interval values are normalized.  The steps, interval and year-day (yday) values are passed to the mice algorithm (https://cran.r-project.org/web/packages/mice/mice.pdf), and the missing step values are imputed using the Predictive mean matching algorithm. Once missing values are imputed, the step values in the original table are replaced with the processed step values.
+
+### View of some formerly missing values
+```{r head, echo=TRUE}
+head(data4, n=10)
+```
+
+## Histogram of the total number of steps taken each day after missing values are imputed  
+```{r histogram2, echo=TRUE}
+grouped <- group_by(data4, date)                  # group rows by date
+group_sums <- summarize(grouped, 
+               tot_steps=sum(steps, na.rm=TRUE)) # Determine total steps per day
+steps <- group_sums$tot_steps                    # short name for total steps
+len <- length(unique(steps))                     # get number of step values     
+hist(steps, breaks = len, main = "Steps per Day", 
+     xlab = "Total Steps")                       # Create histogram of step values
+```
 
 
+## Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends  
+```{r panel, out.width='75%', fig.show='hold', fig.align='center', echo=TRUE}
+wday <- as.POSIXlt(data4$date)                              # Get date value
+data4$wday <- wday$wday                                     # extract weekday value
+data4$day_type <- "weekday"                                 # Set day type
+data4[(data4$wday==0| data4$wday==6),"day_type"] <- "weekend"
+data4$day_type <- as.factor(data4$day_type)                 # set grouping factors
+data4$interval <- as.factor(data4$interval)
+grouped <- group_by(data4, interval, day_type)              # group by interval and day_type
+means <- summarise(grouped, ave=mean(steps))                # get mean for each interval and day type
+xyplot(ave~1:length(means$ave)|day_type, means, type="l", 
+       main="weekday", xlab="Interval", ylab="Number of Steps")
+```
 
-## What is mean total number of steps taken per day?
 
-
-
-## What is the average daily activity pattern?
-
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?

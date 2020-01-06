@@ -25,6 +25,7 @@ With this data, we are required to generate an R Markdown document containing th
 9. All of the R code needed to reproduce the results (numbers, plots, etc.) in the report  
 
 ```{r libraries, message=FALSE, echo=TRUE}
+# Load libraries required for project
 library(UsingR)
 library(lubridate)
 library(stringr)
@@ -42,8 +43,7 @@ library(httpuv)
 
 ### Reading in the data set
 ```{r data_read, echo=TRUE}
-# data_loc <- "C:/Users/jsdean/Documents/Reproducible_research/activity.csv"
- data_loc <- "/home/jsdean/Documents/R/Reproducible_research/activity.csv"
+data_loc <- "/home/jsdean/Documents/R/Reproducible_research/activity.csv" 
 data <- read.csv(data_loc)                       # Read in the data
 data$date <- as.Date(as.character(data$date))    # Set date type
 ```
@@ -61,30 +61,28 @@ hist(steps, breaks = len, main = "Steps per Day",
 
 ### Show mean and median number of steps taken each day
 ```{r mean_medium, echo=TRUE}
-Mean   <- format(mean(steps, na.rm=TRUE), nsmall=2)
+Mean   <- format(mean(steps, na.rm=TRUE), nsmall=2) # compute mean and median
 Median <- format(median(steps, na.rm=TRUE), nsmall=2)
 ```
 #### The mean number of steps per day is `r Mean`, and the median is `r Median`.
 
 ###  Time series plot of the average number of steps taken 
 ```{r stats, echo=TRUE}
-data$interval <- as.factor(data$interval)
-grouped <- group_by(data, interval)
-stats <- summarize(grouped, ave_steps=mean(steps, na.rm=TRUE))
+data$interval <- as.factor(data$interval)           # set intervals as factors
+grouped <- group_by(data, interval)                 # group by collection interval
+stats <- summarize(grouped, ave_steps=mean(steps, na.rm=TRUE)) # compute means per interval
 ggplot(stats, aes(x=1:length(stats$ave_steps), y=ave_steps)) + geom_line() + 
   ggtitle("Average Steps Per Interval") + xlab("Interval")  + ylab("Average Steps")
 ```
     
-
+  
 ### Show the 5-minute interval that, on average, contains the maximum number of steps 
 
 ```{r Max_interval, echo=TRUE}
-data$interval <- as.factor(data$interval)
-grouped <- group_by(data, interval)
-t_means <- summarise(grouped, ave = mean(steps, na.rm=TRUE))
-Max <- data[which.max(t_means$ave),]
-interval <- as.character(Max$interval)
-interval <- paste(substring(interval,1,1),":", substring(interval,2,3), sep="")
+Max <- data[which.max(stats$ave_steps),]            # find the row with the max ave steps     
+interval <- as.character(Max$interval)              # get the interval value
+interval <- paste(substring(interval,1,1),":", 
+                  substring(interval,2,3), sep="")  # format for printing
 
 ```
 
@@ -128,12 +126,12 @@ The data is re-read to include missing step values.  The date values are convert
 
 ### View of some formerly missing values
 ```{r head, echo=TRUE}
-head(data4, n=10)
+head(data4, n=10)                               # show that initial NAs are filled
 ```
 
 ## Histogram of the total number of steps taken each day after missing values are imputed  
 ```{r histogram2, echo=TRUE}
-grouped <- group_by(data4, date)                  # group rows by date
+grouped <- group_by(data4, date)                 # group rows by date
 group_sums <- summarize(grouped, 
                tot_steps=sum(steps, na.rm=TRUE)) # Determine total steps per day
 steps <- group_sums$tot_steps                    # short name for total steps
@@ -154,7 +152,7 @@ data4$interval <- as.factor(data4$interval)
 grouped <- group_by(data4, interval, day_type)              # group by interval and day_type
 means <- summarise(grouped, ave=mean(steps))                # get mean for each interval and day type
 xyplot(ave~1:length(means$ave)|day_type, means, type="l", 
-       main="weekday", xlab="Interval", ylab="Number of Steps")
+       main="Weekday/Weekend Interval Steps Comparison", xlab="Interval", ylab="Number of Steps")
 ```
 
 

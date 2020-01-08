@@ -2,6 +2,7 @@
 title: "Reproducible Research Project"
 author: "Jeff Dean"
 date: "12/26/2019"
+output: md_document
 ---
 
 ```{r setup, include=FALSE}
@@ -128,6 +129,8 @@ The data is re-read to include missing step values.  The date values are convert
 ```{r head, echo=TRUE}
 head(data4, n=10)                               # show that initial NAs are filled
 ```
+
+
 
 ## Histogram of the total number of steps taken each day after missing values are imputed  
 ```{r histogram2, echo=TRUE}

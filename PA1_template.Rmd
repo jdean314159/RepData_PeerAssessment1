@@ -43,7 +43,7 @@ library(httpuv)
 
 ### Reading in the data set
 ```{r data_read, echo=TRUE}
-data_loc <- "/home/jsdean/Documents/R/Reproducible_research/activity.csv" 
+data_loc <- "./activity.csv" 
 data <- read.csv(data_loc)                       # Read in the data
 data$date <- as.Date(as.character(data$date))    # Set date type
 ```
